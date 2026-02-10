@@ -1,3 +1,8 @@
+"""
+    module WebModule
+
+Provides web-specific plugs and utilities, such as JSON parsing and rendering.
+"""
 module WebModule
 
 using ..ConnModule
@@ -19,8 +24,8 @@ function plug_json_parser(conn::Conn)
             json_body = JSON3.read(conn.request.body, Dict{Symbol, Any})
             merge!(conn.params, json_body)
         catch e
-            # In a real framework, we might want to log this or halt
-            # For now, we just ignore parsing errors or empty bodies
+            # Invalid JSON should stop the pipeline immediately
+            return halt!(conn, 400, "Invalid JSON body")
         end
     end
     

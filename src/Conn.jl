@@ -5,6 +5,21 @@ using JSON3
 
 export Conn, assign, halt!, resp
 
+"""
+    mutable struct Conn
+
+Represents the connection state of a request/response cycle.
+It acts as the central data structure passed through the pipeline.
+
+# Fields
+- `request::HTTP.Request`: The raw HTTP request object.
+- `params::Dict{Symbol, Any}`: Request parameters (path, query, body) merged together.
+- `assigns::Dict{Symbol, Any}`: Shared data store for sharing state between plugs.
+- `status::Int`: The HTTP status code to be sent (default: 200).
+- `resp_body::String`: The response body content.
+- `resp_headers::Vector{Pair{String, String}}`: Collection of response headers.
+- `halted::Bool`: Flag indicating if the pipeline should stop execution immediately.
+"""
 mutable struct Conn
     request::HTTP.Request
     params::Dict{Symbol, Any}

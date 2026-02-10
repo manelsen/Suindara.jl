@@ -24,17 +24,17 @@ using SQLite
     @test row.name == "Alice"
     @test row.email == "alice@example.com"
     
-    # 5. Insert with Changeset (The 'Ecto' Dream)
-    # We need a function `Repo.insert(changeset, table_name)`
-    
-    # Mock changeset
+    # 5. Insert with Changeset
     params = Dict("name" => "Bob", "email" => "bob@example.com")
     ch = cast(params, [:name, :email])
     
-    # This function doesn't exist yet, but we want it
-    # Repo.insert(ch, "users") 
+    Repo.insert(ch, "users")
     
-    # Let's verify Bob exists
-    # bob_results = Repo.query("SELECT * FROM users WHERE name = 'Bob'")
-    # @test !isempty(bob_results)
+    bob_results = Repo.query("SELECT * FROM users WHERE name = 'Bob'")
+    @test !isempty(bob_results)
+    @test first(bob_results).email == "bob@example.com"
+
+    # 6. Security: SQL Injection Protection
+    bad_table_name = "users; DROP TABLE users;"
+    @test_throws ErrorException Repo.insert(ch, bad_table_name)
 end

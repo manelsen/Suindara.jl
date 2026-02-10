@@ -1,0 +1,48 @@
+name: Suindara CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10' # Current stable
+        os:
+          - ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+
+      - uses: julia-actions/cache@v2
+
+      - name: Instantiate Dependencies
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      # Step 1: Static Analysis
+      # We allow this to fail (continue-on-error) initially so it doesn't block deployment 
+      # on minor warnings, but the logs will show any issues.
+      - name: Static Analysis (JET)
+        run: |
+          julia --project=. -e 'using Pkg; Pkg.add("JET"); using JET, Suindara; report_package(Suindara)'
+        continue-on-error: true
+
+      # Step 2: Unit & Concurrency Tests
+      # We use --threads auto to enable multi-threading for the concurrency tests
+      - name: Run Unit & Integration Tests
+        run: julia --threads auto --project=. test/runtests.jl
+
+      # Step 3: Security Fuzzing
+      # This ensures the router and parser don't crash under random input
+      - name: Run Security Fuzzing
+        run: julia --project=. test/fuzz_test.jl

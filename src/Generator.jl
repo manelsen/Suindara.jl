@@ -1,13 +1,62 @@
+"""
+    module GeneratorModule
+
+Provides the CLI tooling for scaffolding new Suindara applications.
+"""
 module GeneratorModule
 
-export generate_project
+using Dates
 
+export generate_project, generate_migration
+
+"""
+    generate_migration(name::String)
+
+Creates a new migration file in `db/migrations/` with the current timestamp.
+"""
+function generate_migration(name::String)
+    # Ensure directory exists
+    mig_dir = "db/migrations"
+    if !isdir(mig_dir)
+        mkpath(mig_dir)
+        println("Created directory $mig_dir")
+    end
+
+    # Format: YYYYMMDDHHMMSS_name.jl
+    timestamp = Dates.format(now(), "yyyymmddHHMMSS")
+    filename = "$(timestamp)_$(name).jl"
+    path = joinpath(mig_dir, filename)
+
+    content = """
+# Migration: $name
+# Created: $(now())
+using Suindara.MigrationModule
+
+function up()
+    # create_table("table_name", ["id INTEGER PRIMARY KEY", "col TYPE"])
+    # execute("CREATE TABLE ...")
+end
+
+function down()
+    # drop_table("table_name")
+end
+"""
+    write(path, content)
+    println("Created migration: $path")
+end
+
+"""
+    generate_project(name::String)
+
+Scaffolds a new Suindara application structure.
+...
+"""
 function generate_project(name::String)
     println("Creating Suindara project: $name...")
     
     # 1. Create directory structure
     mkpath("$name/src/controllers")
-    mkpath("$name/db")
+    mkpath("$name/db/migrations") # Added migrations folder
     mkpath("$name/test")
     
     # 2. Project.toml

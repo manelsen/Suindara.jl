@@ -1,3 +1,11 @@
+"""
+    module PipelineModule
+
+Provides the core engine for executing a sequence of transformations on a `Conn`.
+
+A "Plug" in Suindara is simply a function that takes a `Conn` as input and returns a `Conn` (modified or not).
+If a plug calls `halt!(conn)`, the pipeline stops executing subsequent plugs.
+"""
 module PipelineModule
 
 using ..ConnModule

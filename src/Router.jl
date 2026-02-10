@@ -6,6 +6,18 @@ using HTTP
 
 export Route, match_and_dispatch, @router
 
+"""
+    struct Route
+
+Represents a single compiled route definition.
+
+# Fields
+- `method::String`: The HTTP method (e.g., "GET", "POST").
+- `path_template::String`: The original path string (e.g., "/users/:id").
+- `regex::Regex`: The compiled regular expression for matching the path.
+- `param_names::Vector{Symbol}`: List of parameter names extracted from the path.
+- `handler::Function`: The controller function to be executed if matched.
+"""
 struct Route
     method::String
     path_template::String
@@ -14,10 +26,27 @@ struct Route
     handler::Function
 end
 
+"""
+    struct SuindaraRouter
+
+A container for a collection of routes.
+"""
 struct SuindaraRouter
     routes::Vector{Route}
 end
 
+"""
+    match_and_dispatch(router::SuindaraRouter, req::HTTP.Request)
+
+Matches an incoming HTTP request against the defined routes.
+If a match is found:
+1. Creates a `Conn`.
+2. Extracts path parameters into `conn.params`.
+3. Executes the associated handler (controller).
+4. Catches any unhandled exceptions, logging them and returning a generic 500 error.
+
+Returns 404 if no route matches.
+"""
 function match_and_dispatch(router::SuindaraRouter, req::HTTP.Request)
     conn = Conn(req)
     for route in router.routes
@@ -32,8 +61,9 @@ function match_and_dispatch(router::SuindaraRouter, req::HTTP.Request)
                 try
                     return route.handler(conn)
                 catch e
-                    # Basic error handling for production readiness
-                    return resp(conn, 500, "Internal Server Error: $(e)")
+                    # Log error to stderr and return generic 500
+                    @error "Internal Server Error" exception=(e, catch_backtrace())
+                    return resp(conn, 500, "Internal Server Error")
                 end
             end
         end
@@ -41,6 +71,12 @@ function match_and_dispatch(router::SuindaraRouter, req::HTTP.Request)
     return resp(conn, 404, "Route not found")
 end
 
+"""
+    compile_route(path::String)
+
+Compiles a path string (like `/users/:id`) into a regex and a list of parameter names.
+Internal function used by the `@router` macro.
+"""
 function compile_route(path::String)
     # Convert /users/:id to regex ^/users/(?P<id>[^/]+)$
     
@@ -74,6 +110,19 @@ function compile_route(path::String)
     return Regex(regex_str), param_names
 end
 
+"""
+    @router name block
+
+Macro to define a router with a DSL.
+
+# Example
+```julia
+@router AppRouter begin
+    get("/", PageController.index)
+    get("/users/:id", UserController.show)
+end
+```
+"""
 macro router(name, block)
     route_exprs = []
     if block.head == :block
