@@ -10,10 +10,11 @@ export Conn, assign, halt!, resp
 
 Represents the connection state of a request/response cycle.
 It acts as the central data structure passed through the pipeline.
+Plugs should modify this structure in-place and return it.
 
 # Fields
 - `request::HTTP.Request`: The raw HTTP request object.
-- `params::Dict{Symbol, Any}`: Request parameters (path, query, body) merged together.
+- `params::Dict{String, Any}`: Request parameters (path, query, body) merged together.
 - `assigns::Dict{Symbol, Any}`: Shared data store for sharing state between plugs.
 - `status::Int`: The HTTP status code to be sent (default: 200).
 - `resp_body::String`: The response body content.
@@ -22,7 +23,7 @@ It acts as the central data structure passed through the pipeline.
 """
 mutable struct Conn
     request::HTTP.Request
-    params::Dict{Symbol, Any}
+    params::Dict{String, Any} # Changed from Symbol to String to prevent Interning DoS
     assigns::Dict{Symbol, Any}
     status::Int
     resp_body::String
@@ -30,7 +31,7 @@ mutable struct Conn
     halted::Bool
 
     function Conn(req::HTTP.Request)
-        new(req, Dict{Symbol, Any}(), Dict{Symbol, Any}(), 200, "", Pair{String, String}[], false)
+        new(req, Dict{String, Any}(), Dict{Symbol, Any}(), 200, "", Pair{String, String}[], false)
     end
 end
 
@@ -61,7 +62,11 @@ Sets the response status, body, and content type.
 function resp(conn::Conn, status::Int, body::String; content_type::String="text/plain")
     conn.status = status
     conn.resp_body = body
+    
+    # Avoid duplicate Content-Type headers
+    filter!(h -> h.first != "Content-Type", conn.resp_headers)
     push!(conn.resp_headers, "Content-Type" => content_type)
+    
     return conn
 end
 

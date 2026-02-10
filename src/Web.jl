@@ -21,7 +21,8 @@ function plug_json_parser(conn::Conn)
     
     if startswith(content_type, "application/json") && !isempty(conn.request.body)
         try
-            json_body = JSON3.read(conn.request.body, Dict{Symbol, Any})
+            # Use Dict{String, Any} to avoid Symbol interning DoS
+            json_body = JSON3.read(conn.request.body, Dict{String, Any})
             merge!(conn.params, json_body)
         catch e
             # Invalid JSON should stop the pipeline immediately

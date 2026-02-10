@@ -86,7 +86,11 @@ module $name
         
         println("Starting server on port \$port...")
         HTTP.serve(port) do req
-            match_and_dispatch(AppRouter, req)
+            try
+                match_and_dispatch(AppRouter, req)
+            finally
+                # Cleanup resources if necessary
+            end
         end
     end
 end
@@ -113,7 +117,7 @@ module PageController
     end
     
     function show(conn::Conn)
-        id = conn.params[:id]
+        id = conn.params["id"]
         return resp(conn, 200, "Showing User \$id")
     end
 end

@@ -15,11 +15,18 @@ export run_pipeline
 """
     run_pipeline(conn::Conn, plugs::Vector{T}) where T <: Function
 Executes a sequence of plugs on a connection. 
+Each plug MUST return the modified `Conn` object (Standard Pattern: In-place mutation).
 If `conn.halted` becomes true, execution stops immediately.
 """
 function run_pipeline(conn::Conn, plugs::Vector{T}) where T <: Function
     for plug in plugs
-        conn = plug(conn)
+        try
+            conn = plug(conn)
+        catch e
+            @error "Pipeline error" exception=(e, catch_backtrace())
+            return halt!(conn, 500, "Internal Server Error")
+        end
+        
         if conn.halted
             break
         end

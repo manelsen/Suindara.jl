@@ -70,7 +70,7 @@ function match_and_dispatch(router::SuindaraRouter, conn::Conn)
             if m !== nothing
                 # Extract params from regex match
                 for name in route.param_names
-                    conn.params[name] = m[name]
+                    conn.params[string(name)] = m[name]
                 end
                 
                 try
