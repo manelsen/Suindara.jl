@@ -1,0 +1,11 @@
+#!/usr/bin/env julia
+import Pkg; Pkg.activate(".")
+using Suindara
+
+if length(ARGS) < 2 || ARGS[1] != "new"
+    println("Usage: suindara new <app_name>")
+    exit(1)
+end
+
+app_name = ARGS[2]
+generate_project(app_name)
