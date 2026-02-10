@@ -19,6 +19,9 @@ using ..WebModule
 
 export ResourceController, schema, table_name, primary_key
 
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
+
 # --- Interface (User Overrides) ---
 
 """
@@ -56,8 +59,21 @@ module ResourceController
     """
     function index(conn::Conn, ::Type{T}) where T
         table = ResourceModule.table_name(T)
-        # TODO: Pagination could be added here
-        results = Repo.query("SELECT * FROM $table")
+        
+        # Pagination
+        limit_str = get(conn.params, "limit", string(ResourceModule.DEFAULT_LIMIT))
+        offset_str = get(conn.params, "offset", "0")
+        
+        limit = tryparse(Int, limit_str)
+        offset = tryparse(Int, offset_str)
+        
+        limit = (limit === nothing) ? ResourceModule.DEFAULT_LIMIT : limit
+        offset = (offset === nothing) ? 0 : offset
+        
+        # Hard cap for security
+        limit = clamp(limit, 0, ResourceModule.MAX_LIMIT)
+        
+        results = Repo.query("SELECT * FROM $table LIMIT $limit OFFSET $offset")
         
         # Convert SQLite rows to simple Dicts for JSON serialization
         # (JSON3 handles named tuples well, but explicit is good)

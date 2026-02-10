@@ -7,52 +7,89 @@ using ..ChangesetModule
 export connect, query, execute, insert, update, delete, get_one, transaction
 
 # Thread-safe database connection holder
-const _DB = Ref{Union{SQLite.DB, Nothing}}(nothing)
-const _DB_LOCK = ReentrantLock()
+const _POOL = Channel{SQLite.DB}(32)
+const _DB_PATH = Ref{String}("")
 
 """
     connect(path::String)
-Connects to the SQLite database at the given path with WAL mode enabled.
+Connects to the SQLite database at the given path with WAL mode enabled and initializes the pool.
 """
 function connect(path::String)
-    lock(_DB_LOCK) do
-        _DB[] = SQLite.DB(path)
-        # Enable WAL mode for better concurrent read performance
-        DBInterface.execute(_DB[], "PRAGMA journal_mode=WAL;")
-        DBInterface.execute(_DB[], "PRAGMA synchronous=NORMAL;")
-        DBInterface.execute(_DB[], "PRAGMA wal_autocheckpoint=1000;")
+    _DB_PATH[] = path
+    pool_size = min(4, Sys.CPU_THREADS)
+    
+    # Limpar canal se já existir
+    while isready(_POOL)
+        take!(_POOL)
+    end
+    
+    for _ in 1:pool_size
+        db = SQLite.DB(path)
+        # WAL mode and busy timeout
+        try
+            DBInterface.execute(db, "PRAGMA journal_mode=WAL;")
+            DBInterface.execute(db, "PRAGMA synchronous=NORMAL;")
+            DBInterface.execute(db, "PRAGMA wal_autocheckpoint=1000;")
+            DBInterface.execute(db, "PRAGMA busy_timeout=5000;")
+        catch e
+            @warn "Failed to set PRAGMA: $e"
+        end
+        put!(_POOL, db)
     end
 end
 
 """
-    get_db()
-Internal function to safely retrieve the database connection.
+    get_conn(timeout_ms::Int=5000)
+Retrieves a database connection from the pool.
 """
-function get_db()
-    db = _DB[]
-    if db === nothing
+function get_conn(timeout_ms::Int=5000)
+    if !isready(_POOL) && _DB_PATH[] == ""
         error("Database not connected. Call Repo.connect(path) first.")
     end
-    return db
+    
+    # Simples poll-based timeout para o Channel (ou ConcurrentUtilities.lock se preferir)
+    start_time = time()
+    while !isready(_POOL)
+        if (time() - start_time) * 1000 > timeout_ms
+            error("Connection pool timeout after $(timeout_ms)ms")
+        end
+        yield()
+    end
+    
+    return take!(_POOL)
+end
+
+"""
+    release_conn(db)
+Returns a connection to the pool.
+"""
+function release_conn(db)
+    put!(_POOL, db)
 end
 
 """
     query(sql::String, params=())
-Executes a SQL query and returns the result as an iterable of rows. Thread-safe.
+Executes a SQL query and returns the result as an iterable of rows.
 """
 function query(sql::String, params=())
-    lock(_DB_LOCK) do
-        return DBInterface.execute(get_db(), sql, params)
+    db = get_conn()
+    try
+        return DBInterface.execute(db, sql, params)
+    finally
+        release_conn(db)
     end
 end
 
 """
     execute(sql::String, params=())
-Executes a SQL statement. Thread-safe.
+Executes a SQL statement.
 """
 function execute(sql::String, params=())
-    lock(_DB_LOCK) do
-        DBInterface.execute(get_db(), sql, params)
+    db = get_conn()
+    try
+        DBInterface.execute(db, sql, params)
+    finally
+        release_conn(db)
     end
 end
 
@@ -61,11 +98,13 @@ end
 Executes the function `f` within a database transaction.
 """
 function transaction(f::Function)
-    lock(_DB_LOCK) do
-        db = get_db()
+    db = get_conn()
+    try
         SQLite.transaction(db) do
             f()
         end
+    finally
+        release_conn(db)
     end
 end
 
