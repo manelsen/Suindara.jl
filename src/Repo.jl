@@ -12,11 +12,15 @@ const _DB_LOCK = ReentrantLock()
 
 """
     connect(path::String)
-Connects to the SQLite database at the given path.
+Connects to the SQLite database at the given path with WAL mode enabled.
 """
 function connect(path::String)
     lock(_DB_LOCK) do
         _DB[] = SQLite.DB(path)
+        # Enable WAL mode for better concurrent read performance
+        DBInterface.execute(_DB[], "PRAGMA journal_mode=WAL;")
+        DBInterface.execute(_DB[], "PRAGMA synchronous=NORMAL;")
+        DBInterface.execute(_DB[], "PRAGMA wal_autocheckpoint=1000;")
     end
 end
 
