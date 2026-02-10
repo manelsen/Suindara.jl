@@ -4,7 +4,7 @@ using ..Repo
 using ..ConnModule
 using Dates
 
-export migrate, rollback, create_table, add_column, drop_table
+export migrate, rollback, create_table, add_column, drop_table, execute
 
 const MIGRATIONS_TABLE = "schema_migrations"
 

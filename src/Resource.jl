@@ -61,7 +61,7 @@ module ResourceController
         
         # Convert SQLite rows to simple Dicts for JSON serialization
         # (JSON3 handles named tuples well, but explicit is good)
-        data = [row for row in results]
+        data = [NamedTuple(Symbol(k) => getproperty(row, Symbol(k)) for k in propertynames(row)) for row in results]
         return render_json(conn, data)
     end
 

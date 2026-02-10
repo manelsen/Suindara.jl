@@ -39,16 +39,31 @@ end
     match_and_dispatch(router::SuindaraRouter, req::HTTP.Request)
 
 Matches an incoming HTTP request against the defined routes.
-If a match is found:
-1. Creates a `Conn`.
-2. Extracts path parameters into `conn.params`.
-3. Executes the associated handler (controller).
-4. Catches any unhandled exceptions, logging them and returning a generic 500 error.
-
-Returns 404 if no route matches.
+Wraps the request in a `Conn` and delegates to the `Conn`-based dispatch.
 """
 function match_and_dispatch(router::SuindaraRouter, req::HTTP.Request)
     conn = Conn(req)
+    return match_and_dispatch(router, conn)
+end
+
+"""
+    match_and_dispatch(router::SuindaraRouter, conn::Conn)
+
+Matches the connection request against the defined routes.
+If a match is found:
+1. Extracts path parameters into `conn.params`.
+2. Executes the associated handler (controller).
+3. Catches any unhandled exceptions, logging them and returning a generic 500 error.
+
+Returns 404 if no route matches.
+"""
+function match_and_dispatch(router::SuindaraRouter, conn::Conn)
+    # If the connection is already halted, skip routing
+    if conn.halted
+        return conn
+    end
+
+    req = conn.request
     for route in router.routes
         if route.method == req.method
             m = match(route.regex, req.target)
