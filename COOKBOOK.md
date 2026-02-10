@@ -28,6 +28,10 @@ Inspirado nos "Contexts" do Phoenix Framework, este guia encoraja um design onde
   - [6. Deploy e Produção](#6-deploy-e-produção)
     - [Receita: Gerenciamento de Configuração (ENV)](#receita-gerenciamento-de-configuração-env)
     - [Receita: Dockerfile Otimizado](#receita-dockerfile-otimizado)
+  - [7. Migrando do Django (Receitas Avançadas)](#7-migrando-do-django-receitas-avançadas)
+    - [Receita: Queries Composáveis (Substituindo Managers)](#receita-queries-composáveis-substituindo-managers)
+    - [Receita: Pipelines de Serviço (Substituindo Service Classes)](#receita-pipelines-de-serviço-substituindo-service-classes)
+    - [Receita: Hooks Explícitos (Substituindo Signals)](#receita-hooks-explícitos-substituindo-signals)
 
 ---
 
@@ -437,8 +441,215 @@ ENV PORT=8080
 EXPOSE 8080
 
 CMD ["julia", "bin/suindara"]
+
 ```
 
+
+
 ---
+
+
+
+## 7. Migrando do Django (Receitas Avançadas)
+
+
+
+Se você vem do Django ou Rails, pode sentir falta de certas abstrações. Aqui está como traduzir esses padrões para o estilo funcional do Suindara.
+
+
+
+### Receita: Queries Composáveis (Substituindo Managers)
+
+
+
+No Django, você faria `User.objects.active().premium()`. No Suindara, compomos funções que retornam tuplas de `(sql, params)`.
+
+
+
+```julia
+
+module UserQueries
+
+    using Suindara.Repo
+
+
+
+    # Base Query
+
+    base() = ("SELECT * FROM users WHERE 1=1", [])
+
+
+
+    # Modificadores (Filtros)
+
+    function active(q)
+
+        sql, params = q
+
+        return ("$sql AND active = ?", [params..., 1])
+
+    end
+
+
+
+    function premium(q)
+
+        sql, params = q
+
+        return ("$sql AND plan = ?", [params..., "premium"])
+
+    end
+
+
+
+    # Executor
+
+    function all(q)
+
+        sql, params = q
+
+        return Repo.query(sql, params)
+
+    end
+
+end
+
+
+
+# Uso com Pipe operator |>
+
+# users = UserQueries.base() |> UserQueries.active |> UserQueries.premium |> UserQueries.all
+
+```
+
+
+
+### Receita: Pipelines de Serviço (Substituindo Service Classes)
+
+
+
+Em vez de criar classes `UserService` com métodos estáticos, use o operador pipe para definir fluxos de dados claros.
+
+
+
+```julia
+
+module UserOnboarding
+
+    
+
+    struct Context
+
+        params::Dict
+
+        user::Union{Nothing, Dict}
+
+        email_sent::Bool
+
+    end
+
+
+
+    function run(params)
+
+        ctx = Context(params, nothing, false)
+
+        return ctx |> validate |> persist |> send_welcome_email
+
+    end
+
+
+
+    function validate(ctx)
+
+        # Se já falhou, passa reto
+
+        if ctx === nothing return nothing end
+
+        # ... lógica de validação ...
+
+        return ctx
+
+    end
+
+
+
+    function persist(ctx)
+
+        if ctx === nothing return nothing end
+
+        # ... Repo.insert ...
+
+        # Retorna novo contexto com usuário salvo
+
+        return Context(ctx.params, saved_user, false)
+
+    end
+
+    
+
+    # ...
+
+end
+
+```
+
+
+
+### Receita: Hooks Explícitos (Substituindo Signals)
+
+
+
+Signals do Django (`post_save`) são famosos por "mágica" difícil de rastrear. Prefira injeção de dependência ou wrappers explícitos.
+
+
+
+```julia
+
+# Em vez de um signal global, passe as ações colaterais como argumentos
+
+
+
+function create_order(params; on_success=[])
+
+    Repo.transaction() do
+
+        # 1. Salva Pedido
+
+        order = Repo.insert(...)
+
+        
+
+        # 2. Executa Hooks explicitamente
+
+        for hook in on_success
+
+            hook(order)
+
+        end
+
+    end
+
+end
+
+
+
+# Uso:
+
+# create_order(params, on_success=[
+
+#    order -> Email.send_receipt(order),
+
+#    order -> Inventory.decrement(order)
+
+# ])
+
+```
+
+
+
+---
+
+
 
 **Suindara Framework** - Construído para ser simples, rápido e explícito.
