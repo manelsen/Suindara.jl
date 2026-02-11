@@ -90,7 +90,7 @@ module SuinTaskApp
         
         function login(conn::Conn)
             # Fake Login: In real life, check password hash
-            email = get(conn.params, :email, "")
+            email = get(conn.params, "email", "")
             
             user = Repo.get_one("users", email; pk="email")
             

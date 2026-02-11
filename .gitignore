@@ -1,3 +1,6 @@
 Manifest.toml
 test/server.log
 KANBAN.md
+*.db
+*.db-shm
+*.db-wal

@@ -41,7 +41,7 @@ end
 module HelloController
     using Suindara
     function greet(conn::Conn)
-        name = conn.params[:name]
+        name = conn.params["name"]
         return resp(conn, 200, "Olá, $name!")
     end
 end
@@ -136,8 +136,8 @@ struct User
 end
 
 function login(conn::Conn)
-    email = conn.params[:email]
-    password = conn.params[:password]
+    email = conn.params["email"]
+    password = conn.params["password"]
     
     # Busca no banco
     user = Repo.get_one("users", email; pk="email")
@@ -193,7 +193,7 @@ function register(conn::Conn)
     # Fire and Forget
     Threads.@spawn begin
         sleep(5) # Simula envio de email demorado
-        println("Email enviado para $(conn.params[:email])")
+        println("Email enviado para $(conn.params["email"])")
     end
     
     return resp(conn, 201, "Criado")

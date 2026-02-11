@@ -40,7 +40,7 @@ module UserController
     using Suindara
     
     function show(conn::Conn)
-        id = conn.params[:id]
+        id = conn.params["id"]
         return resp(conn, 200, "User ID: $id")
     end
 end

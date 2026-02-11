@@ -17,7 +17,7 @@ module RecommenderApp
         function recommend(conn::Conn)
             # Perfil do usuário (Vetor de 500 features) vindo do JSON
             # Ex: [0.1, 0.5, ... 0.9]
-            user_vector = convert(Vector{Float32}, conn.params[:features])
+            user_vector = convert(Vector{Float32}, conn.params["features"])
             
             # CÁLCULO PESADO EM TEMPO REAL
             # Multiplicação de Matriz (User Vector * Todos os Produtos)

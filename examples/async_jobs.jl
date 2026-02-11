@@ -9,7 +9,7 @@ module AsyncApp
         
         function create(conn::Conn)
             # Simula recebimento de dados
-            user_id = get(conn.params, :user_id, "anon")
+            user_id = get(conn.params, "user_id", "anon")
             
             println("[REQ] Recebido pedido de relatório para: $user_id")
             

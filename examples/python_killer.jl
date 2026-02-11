@@ -71,7 +71,7 @@ module PythonKillerApp
         
         # Função "Factory" simples para simular autenticação
         function index(conn::Conn)
-            type = conn.params[:type] # Passado via URL param
+            type = conn.params["type"] # Passado via URL param
             
             user = if type == "vip"
                 PremiumUser("Carlos", 123)

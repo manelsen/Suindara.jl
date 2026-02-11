@@ -86,7 +86,7 @@ module ResourceController
     Shows a single record by ID.
     """
     function show(conn::Conn, ::Type{T}) where T
-        id = conn.params[:id]
+        id = conn.params["id"]
         table = ResourceModule.table_name(T)
         pk = String(ResourceModule.primary_key(T))
         
@@ -130,7 +130,7 @@ module ResourceController
     Updates an existing record.
     """
     function update(conn::Conn, ::Type{T}) where T
-        id = conn.params[:id]
+        id = conn.params["id"]
         table = ResourceModule.table_name(T)
         pk = String(ResourceModule.primary_key(T))
         
@@ -160,7 +160,7 @@ module ResourceController
     Deletes a record.
     """
     function delete(conn::Conn, ::Type{T}) where T
-        id = conn.params[:id]
+        id = conn.params["id"]
         table = ResourceModule.table_name(T)
         pk = String(ResourceModule.primary_key(T))
         
