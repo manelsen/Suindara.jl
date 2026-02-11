@@ -146,8 +146,8 @@ end
 
 ```julia
 function login(conn)
-    email = conn.params[:email]
-    pass = conn.params[:password]
+    email = conn.params["email"]
+    pass = conn.params["password"]
     
     user = Accounts.get_user_by_email(email)
     
@@ -233,7 +233,7 @@ function paginate(query::String, page::Int=1, per_page::Int=20, params=[])
 end
 
 # Uso
-page = parse(Int, get(conn.params, :page, "1"))
+page = parse(Int, get(conn.params, "page", "1"))
 users = paginate("SELECT * FROM users", page)
 ```
 
