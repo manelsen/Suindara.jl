@@ -62,5 +62,7 @@ using Suindara.Repo
 
     # Cleanup end
     rm(DB_FILE, force=true)
+    rm("$(DB_FILE)-shm", force=true)
+    rm("$(DB_FILE)-wal", force=true)
     rm(MIG_DIR, recursive=true, force=true)
 end
