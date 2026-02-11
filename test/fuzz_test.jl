@@ -8,7 +8,7 @@ using Random
     # Define a simple router for fuzzing
     @router FuzzRouter begin
         get("/safe", conn -> resp(conn, 200, "Safe"))
-        post("/data/:id", conn -> resp(conn, 201, "Created $(conn.params[:id])"))
+        post("/data/:id", conn -> resp(conn, 201, "Created $(conn.params["id"])"))
     end
 
     function random_string(len=10)

@@ -13,8 +13,8 @@ using JSON3
         # This plug doesn't exist yet
         conn = Suindara.plug_json_parser(conn)
         
-        @test conn.params[:foo] == "bar"
-        @test conn.params[:num] == 42
+        @test conn.params["foo"] == "bar"
+        @test conn.params["num"] == 42
     end
     
     @testset "Controller Helper: json" begin

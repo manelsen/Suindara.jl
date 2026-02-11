@@ -21,5 +21,5 @@ using JSON3
     conn_valid = plug_json_parser(conn_valid)
     
     @test conn_valid.halted == false
-    @test conn_valid.params[:key] == "value"
+    @test conn_valid.params["key"] == "value"
 end

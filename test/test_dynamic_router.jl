@@ -6,13 +6,13 @@ using HTTP
 module UserTestController
     using Suindara
     function show(conn::Conn)
-        id = conn.params[:id]
+        id = conn.params["id"]
         return resp(conn, 200, "User ID: $id")
     end
     
     function post_comment(conn::Conn)
-        user_id = conn.params[:user_id]
-        post_id = conn.params[:post_id]
+        user_id = conn.params["user_id"]
+        post_id = conn.params["post_id"]
         return resp(conn, 200, "User: $user_id, Post: $post_id")
     end
 end
@@ -31,7 +31,7 @@ end
         
         @test conn.status == 200
         @test conn.resp_body == "User ID: 42"
-        @test conn.params[:id] == "42"
+        @test conn.params["id"] == "42"
     end
 
     @testset "Match Multiple Parameters" begin
@@ -40,8 +40,8 @@ end
         
         @test conn.status == 200
         @test conn.resp_body == "User: alice, Post: 101"
-        @test conn.params[:user_id] == "alice"
-        @test conn.params[:post_id] == "101"
+        @test conn.params["user_id"] == "alice"
+        @test conn.params["post_id"] == "101"
     end
     
     @testset "No Match still 404" begin
