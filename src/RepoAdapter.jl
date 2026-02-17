@@ -50,6 +50,16 @@ function adapter_release_conn!(adapter::AbstractAdapter, conn)
     error("adapter_release_conn! not implemented for $(typeof(adapter))")
 end
 
+"""
+    adapter_sql_type(adapter::AbstractAdapter, abstract_type::Symbol)::String
+
+Maps an abstract Julia-native type (e.g. `:string`, `:datetime`) to the database-specific SQL type.
+"""
+function adapter_sql_type(adapter::AbstractAdapter, abstract_type::Symbol)::String
+    error("adapter_sql_type not implemented for $(typeof(adapter))")
+end
+
+
 # --- Placeholder Conversion ---
 
 """

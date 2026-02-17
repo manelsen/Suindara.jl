@@ -131,3 +131,23 @@ function RepoAdapterModule.adapter_transaction(adapter::SQLiteAdapter, f::Functi
         adapter_release_conn!(adapter, db)
     end
 end
+
+function RepoAdapterModule.adapter_sql_type(::SQLiteAdapter, type::Symbol)::String
+    if type == :string || type == :text
+        return "TEXT"
+    elseif type == :integer
+        return "INTEGER"
+    elseif type == :float
+        return "REAL"
+    elseif type == :boolean
+        return "INTEGER" # SQLite uses 0/1
+    elseif type == :datetime
+        return "DATETIME"
+    elseif type == :date
+        return "DATE"
+    elseif type == :binary
+        return "BLOB"
+    else
+        error("Unsupported type for SQLite: $type")
+    end
+end

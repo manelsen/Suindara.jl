@@ -134,4 +134,26 @@ function RepoAdapterModule.adapter_transaction(adapter::PostgresAdapter, f::Func
     end
 end
 
+function RepoAdapterModule.adapter_sql_type(::PostgresAdapter, type::Symbol)::String
+    if type == :string
+        return "VARCHAR(255)"
+    elseif type == :text
+        return "TEXT"
+    elseif type == :integer
+        return "INTEGER"
+    elseif type == :float
+        return "DOUBLE PRECISION"
+    elseif type == :boolean
+        return "BOOLEAN"
+    elseif type == :datetime
+        return "TIMESTAMP"
+    elseif type == :date
+        return "DATE"
+    elseif type == :binary
+        return "BYTEA"
+    else
+        error("Unsupported type for Postgres: $type")
+    end
+end
+
 end # module
