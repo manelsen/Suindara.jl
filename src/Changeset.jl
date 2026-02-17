@@ -1,6 +1,6 @@
 module ChangesetModule
 
-export Changeset, cast, validate_required
+export Changeset, cast, validate_required, validate_format, validate_length, validate_inclusion
 
 """
     mutable struct Changeset
@@ -75,6 +75,56 @@ function push_error!(ch::Changeset, field::Symbol, message::String)
         ch.errors[field] = String[]
     end
     push!(ch.errors[field], message)
+end
+
+"""
+    validate_format(ch::Changeset, field::Symbol, pattern::Regex) :: Changeset
+
+Valida que o valor do campo corresponde ao padrão regex.
+Ignora o campo se ele não está presente nos changes.
+"""
+function validate_format(ch::Changeset, field::Symbol, pattern::Regex)::Changeset
+    if !haskey(ch.changes, field)
+        return ch
+    end
+    value = string(ch.changes[field])
+    if !occursin(pattern, value)
+        push_error!(ch, field, "has invalid format")
+    end
+    return ch
+end
+
+"""
+    validate_length(ch::Changeset, field::Symbol; min, max) :: Changeset
+
+Valida que o comprimento da string está entre min e max (inclusive).
+"""
+function validate_length(ch::Changeset, field::Symbol; min::Int=0, max::Int=typemax(Int))::Changeset
+    if !haskey(ch.changes, field)
+        return ch
+    end
+    len = length(ch.changes[field] isa AbstractString ? ch.changes[field] : string(ch.changes[field]))
+    if len < min
+        push_error!(ch, field, "should be at least $min character(s)")
+    elseif len > max
+        push_error!(ch, field, "should be at most $max character(s)")
+    end
+    return ch
+end
+
+"""
+    validate_inclusion(ch::Changeset, field::Symbol, allowed::Vector) :: Changeset
+
+Valida que o valor do campo está na lista de valores permitidos.
+"""
+function validate_inclusion(ch::Changeset, field::Symbol, allowed::Vector)::Changeset
+    if !haskey(ch.changes, field)
+        return ch
+    end
+    if !(ch.changes[field] in allowed)
+        push_error!(ch, field, "is not included in the list of allowed values (inclusion)")
+    end
+    return ch
 end
 
 end # module
