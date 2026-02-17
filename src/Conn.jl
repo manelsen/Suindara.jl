@@ -3,7 +3,7 @@ module ConnModule
 using HTTP
 using JSON3
 
-export Conn, assign, halt!, resp
+export Conn, assign, halt!, resp, json, text, html
 
 """
     mutable struct Conn
@@ -68,6 +68,49 @@ function resp(conn::Conn, status::Int, body::String; content_type::String="text/
     push!(conn.resp_headers, "Content-Type" => content_type)
     
     return conn
+end
+
+"""
+    json(conn::Conn, status::Int, data::Any)
+    json(conn::Conn, data::Any)
+
+Serializes `data` to JSON using JSON3, sets Content-Type to application/json, and sends response.
+"""
+function json(conn::Conn, status::Int, data::Any)
+    body = JSON3.write(data)
+    return resp(conn, status, body; content_type="application/json")
+end
+
+function json(conn::Conn, data::Any)
+    return json(conn, 200, data)
+end
+
+"""
+    text(conn::Conn, status::Int, body::String)
+    text(conn::Conn, body::String)
+
+Sends a text/plain response.
+"""
+function text(conn::Conn, status::Int, body::String)
+    return resp(conn, status, body; content_type="text/plain")
+end
+
+function text(conn::Conn, body::String)
+    return text(conn, 200, body)
+end
+
+"""
+    html(conn::Conn, status::Int, body::String)
+    html(conn::Conn, body::String)
+
+Sends a text/html response.
+"""
+function html(conn::Conn, status::Int, body::String)
+    return resp(conn, status, body; content_type="text/html")
+end
+
+function html(conn::Conn, body::String)
+    return html(conn, 200, body)
 end
 
 end # module
