@@ -22,6 +22,8 @@ include("Router.jl")
 
 include("Changeset.jl")
 include("Web.jl")
+include("RepoAdapter.jl")
+include("adapters/SQLiteAdapter.jl")
 include("Repo.jl")
 include("Resource.jl")
 include("Migration.jl")
@@ -49,6 +51,7 @@ using .PipelineModule
 using .RouterModule
 using .ChangesetModule
 using .WebModule
+using .RepoAdapterModule
 using .Repo
 using .ResourceModule
 using .MigrationModule
@@ -96,5 +99,6 @@ export TelemetryStore, attach!, emit, measure_latency
 export render_string, render_file, escape_html, plug_render_html
 export MemorySessionStore, make_session_plug, session_get, session_put!, session_delete!
 export make_csrf_plug
+export AbstractAdapter, create_adapter, convert_placeholders
 
 end # module
