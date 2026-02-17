@@ -18,7 +18,7 @@ Executes a sequence of plugs on a connection.
 Each plug MUST return the modified `Conn` object (Standard Pattern: In-place mutation).
 If `conn.halted` becomes true, execution stops immediately.
 """
-function run_pipeline(conn::Conn, plugs::Vector{T}) where T <: Function
+function run_pipeline(conn::Conn, plugs::Vector)
     for plug in plugs
         try
             conn = plug(conn)
