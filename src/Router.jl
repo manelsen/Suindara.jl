@@ -4,7 +4,7 @@ using ..ConnModule
 using ..PipelineModule
 using HTTP
 
-export Route, match_and_dispatch, @router, pipe_through, pipeline, scope
+export Route, match_and_dispatch, @router, pipe_through, pipeline, scope, websocket, SuindaraRouter
 
 # --- Structs ---
 
@@ -20,6 +20,7 @@ end
 struct SuindaraRouter
     routes::Vector{Route}
     pipelines::Dict{Symbol, Vector{Any}}
+    socket_routes::Dict{String, Any} # Path -> Handler (Registry)
 end
 
 # --- Dispatch ---
@@ -98,7 +99,12 @@ mutable struct RouterState
     pipeline_stack::Vector{Symbol}
     routes::Vector{Expr}
     pipelines::Dict{Symbol, Vector{Any}}
+    socket_routes::Vector{Tuple{String, Any}}
 end
+
+
+
+
 
 # Extract symbol from QuoteNode or Symbol
 function extract_symbol(x)
@@ -211,6 +217,20 @@ function process_expr!(state::RouterState, expr::Any)
                 end
             end
 
+        elseif func == :websocket
+            # websocket "/path", Handler
+            path_part = expr.args[2]
+            handler = expr.args[3]
+            
+            base_path = join(state.path_stack, "")
+            full_path = base_path * path_part
+            full_path = replace(full_path, "//" => "/")
+             if length(full_path) > 1 && endswith(full_path, "/")
+                 full_path = full_path[1:end-1]
+            end
+            
+            push!(state.socket_routes, (full_path, handler))
+
         elseif func in [:get, :post, :put, :delete, :patch, :options, :head]
             method = string(func) |> uppercase
             path = expr.args[2]
@@ -237,7 +257,7 @@ end
     @router Name begin ... end
 """
 macro router(name, block)
-    state = RouterState(String[], Symbol[], Expr[], Dict{Symbol, Vector{Any}}())
+    state = RouterState(String[], Symbol[], Expr[], Dict{Symbol, Vector{Any}}(), Tuple{String, Any}[])
     process_block!(state, block)
     
     pipe_entries = Expr(:block)
@@ -245,13 +265,20 @@ macro router(name, block)
         escaped_plugs = Expr(:vect, [esc(p) for p in plugs]...)
         push!(pipe_entries.args, :(d[$(QuoteNode(name_sym))] = $escaped_plugs)) 
     end
+    
+    socket_entries = Expr(:block)
+    for (path, handler) in state.socket_routes
+        push!(socket_entries.args, :(s[$(path)] = $(esc(handler))))
+    end
 
     quote
         $(esc(name)) = let
             d = Dict{Symbol, Vector{Any}}()
             $pipe_entries
+            s = Dict{String, Any}()
+            $socket_entries
             routes_vec = [$(state.routes...)]
-            SuindaraRouter(routes_vec, d)
+            SuindaraRouter(routes_vec, d, s)
         end
     end
 end
@@ -260,5 +287,6 @@ end
 function pipeline(args...) end
 function scope(args...) end
 function pipe_through(args...) end
+function websocket(args...) end
 
 end # module

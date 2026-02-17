@@ -1,36 +1,36 @@
-# Tutorial Suindara: Do Zero ao Admin em 1 Dia
+# Suindara Tutorial: Zero to Hero
 
-Bem-vindo ao curso prático do **Suindara Framework**. Hoje vamos construir o **SuinTask**, um sistema de gestão de tarefas (SaaS) completo.
+Welcome to the **Suindara Framework** practical course. In this tutorial, we will build **SuinTask**, a complete SaaS task management system.
 
-Cada passo introduz um conceito novo. Não pule etapas!
+Each step introduces a new concept. Don't skip ahead!
 
 ---
 
-## Parte 1: Fundamentos
+## Part 1: Foundations
 
-### Exemplo 1: O Mínimo Produto Viável
-Vamos subir um servidor que apenas diz "Olá".
-**Conceito:** `Conn` (Conexão) e `resp` (Resposta).
+### Example 1: The Minimum Viable Product
+Let's start a server that simply says "Hello".
+**Concepts:** `Conn` (Connection) and `resp` (Response).
 
 ```julia
 using Suindara
 using HTTP
 
-# Um Controller é apenas uma função
+# a Controller is just a function
 function hello(conn::Conn)
-    return resp(conn, 200, "Olá, Mundo Suindara!")
+    return resp(conn, 200, "Hello, Suindara World!")
 end
 
-# Subindo o servidor na mão (sem Router ainda)
+# Starting the server manually (without Router for now)
 HTTP.serve(8080) do req
     conn = Conn(req)
     hello(conn)
 end
 ```
 
-### Exemplo 2: O Roteador (Router DSL)
-Organizando URLs e capturando parâmetros.
-**Conceito:** `@router`, `:params`.
+### Example 2: The Router (Router DSL)
+Organizing URLs and capturing parameters.
+**Concepts:** `@router`, `:params`.
 
 ```julia
 @router AppRouter begin
@@ -42,26 +42,88 @@ module HelloController
     using Suindara
     function greet(conn::Conn)
         name = conn.params["name"]
-        return resp(conn, 200, "Olá, $name!")
+        return resp(conn, 200, "Hello, $name!")
     end
 end
 ```
 
-### Exemplo 3: JSON e Changesets
-Validando entrada de dados.
-**Conceito:** `plug_json_parser`, `Changeset`, `cast`.
+### Example 3: Pipelines & Plugs
+Transforming requests with composable functions.
+**Concepts:** `pipeline`, `plug`, `pipe_through`.
 
 ```julia
-# O Payload: {"title": "Comprar Pão", "priority": 1}
+@router AppRouter begin
+    pipeline :api do
+        plug(Suindara.plug_json_parser)
+        plug(Suindara.plug_cors)
+    end
+
+    scope "/api" do
+        pipe_through(:api)
+        post("/tasks", TaskController.create)
+    end
+end
+```
+
+---
+
+## Part 2: Data & Persistence
+
+### Example 4: Database Setup (Repo)
+Connecting to SQLite and executing raw SQL.
+**Concepts:** `Repo.connect`, `Repo.execute`.
+
+```julia
+using Suindara.RepoModule
+
+# Connect to SQLite
+Repo.connect("suintask.db")
+
+# Execute SQL
+Repo.execute("CREATE TABLE IF NOT EXISTS logs (message TEXT)")
+Repo.execute("INSERT INTO logs VALUES (?)", ["Server started"])
+```
+
+### Example 5: Migrations (Ecto Style)
+Evolving your database schema professionally.
+**Concepts:** `generate_migration`, `up/down`.
+
+`db/migrations/20260210_create_tasks.jl`:
+```julia
+using Suindara.MigrationModule
+
+function up()
+    create_table("tasks", [
+        "id INTEGER PRIMARY KEY",
+        "title TEXT NOT NULL",
+        "priority INTEGER DEFAULT 0",
+        "done BOOLEAN DEFAULT 0"
+    ])
+end
+
+function down()
+    drop_table("tasks")
+end
+```
+
+### Example 6: Changesets & Validation
+Validating input data before it hits the database.
+**Concepts:** `Changeset`, `cast`, `validate_required`.
+
+```julia
+# Payload: {"title": "Buy Bread", "priority": 1}
 function create_task(conn::Conn)
-    # 1. Definir o que é permitido
     allowed = [:title, :priority]
     
-    # 2. Filtrar e Validar
+    # 1. Cast and Filter
     ch = cast(conn.params, allowed)
+    
+    # 2. Validate
     ch = validate_required(ch, [:title])
+    ch = validate_inclusion(ch, :priority, 1:5)
     
     if ch.valid
+        # Save to DB (mock)
         return render_json(conn, ch.changes, status=201)
     else
         return render_json(conn, ch.errors, status=422)
@@ -69,169 +131,203 @@ function create_task(conn::Conn)
 end
 ```
 
----
-
-## Parte 2: Persistência e Dados
-
-### Exemplo 4: Banco de Dados (Raw SQL)
-Conectando e inserindo sem abstrações.
-**Conceito:** `Repo.connect`, `Repo.execute`.
-
-```julia
-Repo.connect("suintask.db")
-Repo.execute("CREATE TABLE IF NOT EXISTS logs (message TEXT)")
-Repo.execute("INSERT INTO logs VALUES (?)", ["Servidor iniciou"])
-```
-
-### Exemplo 5: Migrations (Ecto Style)
-Evoluindo o banco de forma profissional.
-**Conceito:** `generate_migration`, `up/down`.
-
-`db/migrations/20260210_create_tasks.jl`:
-```julia
-using Suindara.MigrationModule
-function up()
-    create_table("tasks", [
-        "id INTEGER PRIMARY KEY",
-        "title TEXT NOT NULL",
-        "done BOOLEAN DEFAULT 0"
-    ])
-end
-```
-
-### Exemplo 6: O Recurso Genérico (CRUD)
-Criando uma API completa sem escrever código.
-**Conceito:** `ResourceController`, `Interface`.
+### Example 7: The Generic Resource (CRUD)
+Creating a complete API without writing boilerplate code.
+**Concepts:** `ResourceController`, `Interface`.
 
 ```julia
 struct Task
     id::Int
     title::String
+    priority::Int
     done::Bool
 end
 
-# Configuração Mágica
-Suindara.ResourceModule.schema(::Type{Task}) = [:title, :done]
+# Automagic Configuration
+Suindara.ResourceModule.schema(::Type{Task}) = [:title, :priority, :done]
 Suindara.ResourceModule.table_name(::Type{Task}) = "tasks"
 
 @router ApiRouter begin
-    # Cria GET, POST, PUT, DELETE /tasks automaticamente
-    post("/tasks", conn -> ResourceController.create(conn, Task))
-    get("/tasks", conn -> ResourceController.index(conn, Task))
+    # Automatically creates GET, POST, PUT, DELETE /tasks
+    resources("/tasks", TaskController, Task)
 end
 ```
 
 ---
 
-## Parte 3: Segurança e Autenticação
+## Part 3: Web Ecosystem (v1.0)
 
-### Exemplo 7: Modelando Usuários (Auth)
-Preparando o terreno para login. Hash de senha (simulado para brevidade).
+### Example 8: Authentication (Bearer Token)
+Protecting routes with standardized auth plugs.
+**Concepts:** `AuthModule`, `make_bearer_plug`.
 
 ```julia
-struct User
-    id::Int
-    email::String
-    password_hash::String
+# 1. Define verification logic
+function verify_token(token::String)
+    return token == "secret_token_123" # Replace with real DB lookup
 end
 
-function login(conn::Conn)
-    email = conn.params["email"]
-    password = conn.params["password"]
-    
-    # Busca no banco
-    user = Repo.get_one("users", email; pk="email")
-    
-    if user !== nothing && user.password_hash == fake_hash(password)
-        token = "sessao_$(user.id)"
-        return render_json(conn, Dict("token" => token))
-    else
-        return halt!(conn, 401, "Credenciais Inválidas")
+# 2. Create the plug
+const auth_plug = Suindara.AuthModule.make_bearer_plug(verify_token)
+
+# 3. Use in Router
+@router AppRouter begin
+    pipeline :protected do
+        plug(auth_plug)
+    end
+
+    scope "/admin" do
+        pipe_through(:protected)
+        get("/dashboard", AdminController.dashboard)
     end
 end
 ```
 
-### Exemplo 8: Plugs de Proteção (Middleware)
-Interceptando requisições para checar tokens.
-**Conceito:** `conn.assigns`, `halt!`.
+### Example 9: Rate Limiting
+Preventing abuse with Token Bucket algorithm.
+**Concepts:** `RateLimiterModule`, `make_rate_limiter_plug`.
 
 ```julia
-function plug_require_auth(conn::Conn)
-    token = HTTP.header(conn.request, "Authorization")
-    
-    if token == "segredo" # Simplificado
-        assign(conn, :current_user_id, 1) # Injeta usuário na sessão
-        return conn
-    else
-        return halt!(conn, 401, "Token Ausente")
-    end
-end
+# Allow 10 requests per minute
+const rate_limit = Suindara.RateLimiterModule.make_rate_limiter_plug(10, 60.0)
 
-# No Router:
-get("/secrets", conn -> begin
-    conn = plug_require_auth(conn) # Executa o plug
-    if !conn.halted
-        SecretController.show(conn)
-    else
-        conn # Retorna o erro 401 definido no plug
+@router AppRouter begin
+    pipeline :api do
+        plug(rate_limit)
     end
-end)
+    # ...
+end
+```
+
+### Example 10: Auto-Generated Docs (OpenAPI)
+Generating Swagger documentation from your router.
+**Concepts:** `OpenAPIModule`, `generate_spec`.
+
+```julia
+# Generate spec
+spec = Suindara.OpenAPIModule.generate_spec(AppRouter)
+
+# Serve it
+get("/swagger.json", conn -> render_json(conn, spec))
 ```
 
 ---
 
-## Parte 4: Avançado
+## Part 4: Real-Time (WebSockets)
 
-### Exemplo 9: Jobs Assíncronos (Background)
-Enviando email de boas-vindas sem travar a API.
-**Conceito:** `Threads.@spawn`.
+### Example 11: Chat Channels
+Building a real-time chat application.
+**Concepts:** `socket`, `Channel`, `push`, `broadcast`.
+
+**Router Setup:**
+```julia
+@router AppRouter begin
+    socket "/ws", SocketHandler
+end
+```
+
+**Channel Logic:**
+```julia
+module ChatChannel
+    using Suindara.ChannelModule
+    using Suindara.SocketModule
+
+    # Handle joining a topic
+    function join(socket, topic, payload)
+        if topic == "room:lobby"
+            return :ok
+        else
+            return :error, "Room not found"
+        end
+    end
+
+    # Handle incoming events
+    function handle_in("new_msg", payload, socket)
+        # Broadcast to everyone in the topic
+        broadcast(socket, "new_msg", payload)
+        return :noreply
+    end
+end
+```
+
+---
+
+## Part 5: Full-Stack Features
+
+### Example 12: HTML Templates
+Rendering dynamic HTML server-side.
+**Concepts:** `TemplateModule`, `render_file`.
+
+```julia
+# views/home.html: <h1>Hello, {{name}}!</h1>
+
+function home(conn::Conn)
+    html = Suindara.TemplateModule.render_file("views/home.html", Dict("name" => "User"))
+    return Suindara.TemplateModule.plug_render_html(conn, html)
+end
+```
+
+### Example 13: Sessions & CSRF
+Managing user state and security.
+**Concepts:** `SessionModule`, `CSRFModule`.
+
+```julia
+const session_store = Suindara.SessionModule.MemorySessionStore()
+const session_plug = Suindara.SessionModule.make_session_plug(session_store)
+const csrf_plug = Suindara.CSRFModule.make_csrf_plug()
+
+@router AppRouter begin
+    pipeline :browser do
+        plug(session_plug)
+        plug(csrf_plug)
+    end
+
+    scope "/" do
+        pipe_through(:browser)
+        get("/", PageController.index)
+        post("/login", AuthController.login)
+    end
+end
+```
+
+---
+
+## Part 6: Advanced
+
+### Example 14: Background Jobs
+Sending emails without blocking the request.
+**Concepts:** `Threads.@spawn`.
 
 ```julia
 function register(conn::Conn)
-    # ... cria usuário ...
+    # ... create user ...
     
     # Fire and Forget
     Threads.@spawn begin
-        sleep(5) # Simula envio de email demorado
-        println("Email enviado para $(conn.params["email"])")
+        sleep(5) # Simulate slow email sending
+        println("Welcome email sent to $(conn.params["email"])")
     end
     
-    return resp(conn, 201, "Criado")
+    return resp(conn, 201, "User Created")
 end
 ```
 
-### Exemplo 10: O Admin Dashboard
-Agregando dados e monitorando o sistema.
+### Example 15: Telemetry & Admin Dashboard
+Monitoring system health.
+**Concepts:** `TelemetryModule`.
 
 ```julia
-module AdminController
-    using Suindara
-    
-    function stats(conn::Conn)
-        # Consultas agregadas
-        total_users = first(Repo.query("SELECT count(*) as c FROM users")).c
-        total_tasks = first(Repo.query("SELECT count(*) as c FROM tasks")).c
-        
-        # Estado do Sistema
-        mem_usage = Sys.summarysize(Suindara) / 1024 / 1024 # MB
-        threads = Threads.nthreads()
-        
-        return render_json(conn, Dict(
-            "business" => Dict(
-                "users" => total_users,
-                "tasks" => total_tasks
-            ),
-            "system" => Dict(
-                "memory_mb" => mem_usage,
-                "threads" => threads,
-                "uptime" => time() - START_TIME
-            )
-        ))
-    end
+# Instrumenting a critical section
+Suindara.TelemetryModule.span("db_query") do
+    Repo.query("SELECT * FROM heavy_table")
 end
+
+# Checking stats
+stats = Suindara.TelemetryModule.get_metrics()
+println("Average DB Latency: $(stats["db_query_avg_ms"]) ms")
 ```
 
 ---
 
-**Parabéns!** Você construiu um backend moderno, seguro e assíncrono.
-O Suindara não esconde a complexidade de você, ele te dá ferramentas para dominá-la.
+**Congratulations!** You have built a modern, secure, and asynchronous backend.
+Suindara doesn't hide complexity from you; it gives you the tools to master it.

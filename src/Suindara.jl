@@ -45,6 +45,9 @@ include("Telemetry.jl")
 include("Template.jl")
 include("Session.jl")
 include("CSRF.jl")
+include("Socket.jl")
+include("Server.jl")
+include("BenchmarkSuite.jl")
 
 using .ConnModule
 using .PipelineModule
@@ -73,8 +76,11 @@ using .TelemetryModule
 using .TemplateModule
 using .SessionModule
 using .CSRFModule
+using .SocketModule
+using .ServerModule
+using .BenchmarkSuite
 
-export Conn, assign, halt!, resp, run_pipeline
+export Conn, assign, halt!, resp, run_pipeline, json, text, html
 export Route, match_and_dispatch, @router
 export Changeset, cast, validate_required, validate_format, validate_length, validate_inclusion
 export plug_json_parser, render_json
@@ -100,5 +106,6 @@ export render_string, render_file, escape_html, plug_render_html
 export MemorySessionStore, make_session_plug, session_get, session_put!, session_delete!
 export make_csrf_plug
 export AbstractAdapter, create_adapter, convert_placeholders
+export Socket, handle_socket, handle_stream
 
 end # module
