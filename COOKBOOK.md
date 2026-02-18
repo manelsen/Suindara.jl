@@ -1,49 +1,50 @@
-# 🍳 Suindara Cookbook (Edição Completa)
+# 🍳 Suindara Cookbook (Complete Edition)
 
-Este guia prático fornece receitas para resolver problemas comuns de arquitetura, segurança, performance e deploy em aplicações Suindara. 
+This practical guide provides recipes for solving common architecture, security, performance, and deployment problems in Suindara applications.
 
-Inspirado nos "Contexts" do Phoenix Framework, este guia encoraja um design onde a lógica de negócio é desacoplada da camada Web.
+Inspired by the "Contexts" pattern from Phoenix Framework, this guide encourages a design where business logic is decoupled from the Web layer.
 
-## Índice
+## Table of Contents
 
-- [🍳 Suindara Cookbook (Edição Completa)](#-suindara-cookbook-edição-completa)
-  - [Índice](#índice)
-  - [1. Arquitetura e Organização](#1-arquitetura-e-organização)
-    - [O Padrão de Contextos (Contexts)](#o-padrão-de-contextos-contexts)
-    - [Receita: Separando Contas (Accounts)](#receita-separando-contas-accounts)
-  - [2. Segurança e Autenticação](#2-segurança-e-autenticação)
-    - [Receita: Hash de Senhas (PBKDF2 Simples)](#receita-hash-de-senhas-pbkdf2-simples)
-    - [Receita: Autenticação via Token (Bearer)](#receita-autenticação-via-token-bearer)
-    - [Receita: Protegendo Recursos (Plugs de Autorização)](#receita-protegendo-recursos-plugs-de-autorização)
-  - [3. Banco de Dados Avançado](#3-banco-de-dados-avançado)
-    - [Receita: Seeds e População de Dados](#receita-seeds-e-população-de-dados)
-    - [Receita: Paginação Eficiente](#receita-paginação-eficiente)
-    - [Receita: Evitando N+1 (Preloading Manual)](#receita-evitando-n1-preloading-manual)
-  - [4. Middleware e Plugs](#4-middleware-e-plugs)
-    - [Receita: CORS (Cross-Origin Resource Sharing)](#receita-cors-cross-origin-resource-sharing)
-    - [Receita: Request ID e Rastreabilidade](#receita-request-id-e-rastreabilidade)
-  - [5. Testes e Qualidade](#5-testes-e-qualidade)
-    - [Receita: Factories para Testes](#receita-factories-para-testes)
-    - [Receita: Testando Upload de Arquivos](#receita-testando-upload-de-arquivos)
-  - [6. Deploy e Produção](#6-deploy-e-produção)
-    - [Receita: Gerenciamento de Configuração (ENV)](#receita-gerenciamento-de-configuração-env)
-    - [Receita: Dockerfile Otimizado](#receita-dockerfile-otimizado)
-  - [7. Migrando do Django (Receitas Avançadas)](#7-migrando-do-django-receitas-avançadas)
-    - [Receita: Queries Composáveis (Substituindo Managers)](#receita-queries-composáveis-substituindo-managers)
-    - [Receita: Pipelines de Serviço (Substituindo Service Classes)](#receita-pipelines-de-serviço-substituindo-service-classes)
-    - [Receita: Hooks Explícitos (Substituindo Signals)](#receita-hooks-explícitos-substituindo-signals)
+- [1. Architecture & Organization](#1-architecture--organization)
+    - [The Context Pattern](#the-context-pattern)
+    - [Recipe: Separating Accounts](#recipe-separating-accounts)
+- [2. Real-Time & WebSockets](#2-real-time--websockets)
+    - [Recipe: Setting up a Socket](#recipe-setting-up-a-socket)
+    - [Recipe: Channel Event Handling](#recipe-channel-event-handling)
+- [3. Security & Authentication](#3-security--authentication)
+    - [Recipe: Password Hashing (Simple PBKDF2)](#recipe-password-hashing-simple-pbkdf2)
+    - [Recipe: Token Authentication (Bearer)](#recipe-token-authentication-bearer)
+    - [Recipe: CSRF Protection](#recipe-csrf-protection)
+    - [Recipe: Rate Limiting](#recipe-rate-limiting)
+- [4. API & Documentation](#4-api--documentation)
+    - [Recipe: Auto-Generating OpenAPI Specs](#recipe-auto-generating-openapi-specs)
+- [5. Observability & Telemetry](#5-observability--telemetry)
+    - [Recipe: Instrumenting Pipelines](#recipe-instrumenting-pipelines)
+- [6. Database Patterns](#6-database-patterns)
+    - [Recipe: Seeds & Data Population](#recipe-seeds--data-population)
+    - [Recipe: Efficient Pagination](#recipe-efficient-pagination)
+    - [Recipe: Avoiding N+1 Queries (Manual Preloading)](#recipe-avoiding-n1-queries-manual-preloading)
+- [7. Development Experience](#7-development-experience)
+    - [Recipe: Hot Reloading with Revise](#recipe-hot-reloading-with-revise)
+- [8. Deployment & Production](#8-deployment--production)
+    - [Recipe: Configuration Management (ENV)](#recipe-configuration-management-env)
+    - [Recipe: Optimized Dockerfile](#recipe-optimized-dockerfile)
+- [9. Migrating from Django/Rails](#9-migrating-from-djangorails)
+    - [Recipe: Composable Queries (Replacing Managers)](#recipe-composable-queries-replacing-managers)
+    - [Recipe: Service Pipelines (Replacing Service Classes)](#recipe-service-pipelines-replacing-service-classes)
 
 ---
 
-## 1. Arquitetura e Organização
+## 1. Architecture & Organization
 
-### O Padrão de Contextos (Contexts)
+### The Context Pattern
 
-No Phoenix, evitamos colocar lógica de negócio nos Controllers. Controllers devem apenas receber dados, chamar uma função de negócio e devolver uma resposta.
+In Suindara (like Phoenix), we avoid placing business logic in Controllers. Controllers should only receive data, call a business function (Context), and return a response.
 
-### Receita: Separando Contas (Accounts)
+### Recipe: Separating Accounts
 
-Crie módulos que agrupam funcionalidades relacionadas.
+Create modules that group related functionality.
 
 ```julia
 # src/contexts/Accounts.jl
@@ -57,32 +58,32 @@ module Accounts
         password_hash::String
     end
 
-    # Schema para validação
+    # Schema for validation
     schema(::Type{User}) = [:email, :password]
 
     """
-    Cria um usuário aplicando regras de negócio (hashing de senha).
+    Creates a user applying business rules (password hashing).
     """
     function register_user(attrs::Dict)
-        # 1. Validação básica
+        # 1. Basic Validation
         ch = cast(attrs, schema(User))
         ch = validate_required(ch, [:email, :password])
         
         if !ch.valid return ch end
 
-        # 2. Regra de Negócio: Hash da senha
+        # 2. Business Rule: Hash password
         pass = get(ch.changes, :password, "")
         ch.changes[:password_hash] = hash_password(pass)
-        delete!(ch.changes, :password) # Nunca salvar a senha crua!
+        delete!(ch.changes, :password) # Never save raw password!
 
-        # 3. Persistência
+        # 3. Persistence
         try
             Repo.insert(ch, "users")
             return ch
         catch e
-            # Tratamento de erro de unicidade, etc.
+            # Handle uniqueness errors, etc.
             ch.valid = false
-            ch.errors[:email] = "Email já existe"
+            ch.errors[:email] = "Email already exists"
             return ch
         end
     end
@@ -91,15 +92,15 @@ module Accounts
         return Repo.get_one("users", email, pk="email")
     end
 
-    # Função auxiliar privada
+    # Private helper function
     function hash_password(password)
-        # Em produção, use Argon2 ou PBKDF2
-        return bytes2hex(sha256(password * "SALT_SECRETO")) 
+        # In production, use Argon2 or PBKDF2
+        return bytes2hex(sha256(password * "SECRET_SALT")) 
     end
 end
 ```
 
-**No Controller:**
+**In the Controller:**
 ```julia
 module UserController
     using ..Accounts
@@ -117,20 +118,67 @@ end
 
 ---
 
-## 2. Segurança e Autenticação
+## 2. Real-Time & WebSockets
 
-### Receita: Hash de Senhas (PBKDF2 Simples)
+Suindara provides native support for WebSockets via `SocketModule` and `ChannelModule`.
 
-Não reinvente a roda. Use bibliotecas como `SHA` ou `MbedTLS` se disponível, mas aqui está uma implementação conceitual segura.
+### Recipe: Setting up a Socket
+
+Define a socket handler that maps to your router.
+
+```julia
+# src/socket_handler.jl
+module AppSocket
+    using Suindara.SocketModule
+    using Suindara.ChannelModule
+
+    # Define your channel registry
+    const registry = ChannelRegistry()
+
+    # Register channel handlers
+    # Example: "room:*" matches "room:lobby", "room:123"
+    register_handler!(registry, "room:*", :new_msg, (payload) -> begin
+        println("Broadcasting message: ", payload)
+        return Dict("status" => "sent", "body" => payload)
+    end)
+
+    # Main entry point for the router
+    function handle(ws)
+        SocketModule.handle_socket(ws, registry)
+    end
+end
+```
+
+**In your Router:**
+```julia
+@router ApiRouter begin
+    socket("/ws", AppSocket.handle)
+end
+```
+
+### Recipe: Channel Event Handling
+
+Clients send JSON messages formatted like Phoenix Channels:
+`{"topic": "room:1", "event": "new_msg", "payload": {"text": "Hello"}, "ref": "1"}`.
+
+Suindara automatically dispatches these to your registered handlers.
+
+---
+
+## 3. Security & Authentication
+
+### Recipe: Password Hashing (Simple PBKDF2)
+
+Don't reinvent the wheel. Use libraries like `SHA` or `MbedTLS`, but here is a secure conceptual implementation.
 
 ```julia
 using SHA
 
-const SALT_GLOBAL = ENV["SECRET_KEY_BASE"] # Configure isso no env!
+const GLOBAL_SALT = ENV["SECRET_KEY_BASE"] # Configure this in env!
 
 function hash_pwd(password::String)
-    # Simulação de PBKDF2 (Muitas iterações para evitar brute-force)
-    hash = password * SALT_GLOBAL
+    # PBKDF2 Simulation (Many iterations to prevent brute-force)
+    hash = password * GLOBAL_SALT
     for _ in 1:1000
         hash = bytes2hex(sha256(hash))
     end
@@ -142,54 +190,119 @@ function verify_pwd(password::String, stored_hash::String)
 end
 ```
 
-### Receita: Autenticação via Token (Bearer)
+### Recipe: Token Authentication (Bearer)
 
 ```julia
-function login(conn)
-    email = conn.params["email"]
-    pass = conn.params["password"]
-    
-    user = Accounts.get_user_by_email(email)
-    
-    if user !== nothing && verify_pwd(pass, user.password_hash)
-        # Gere um token real (JWT) em produção. 
-        # Aqui usamos um token opaco simples.
-        token = "suin_$(base64encode(user.id))_$(time())"
-        
-        # Salvar token em tabela de sessões ou Redis seria ideal
-        return render_json(conn, Dict("token" => token))
-    else
-        halt!(conn, 401, "Credenciais Inválidas")
-    end
+using Suindara.AuthModule
+
+function verify_token(token::String)
+    # Verify token against DB or validate JWT signature
+    user = Accounts.get_user_by_token(token)
+    return user !== nothing
+end
+
+# Create the plug
+const auth_plug = AuthModule.make_bearer_plug(verify_token)
+
+# Use in Router pipeline
+pipeline(:protected) do
+    plug(auth_plug)
 end
 ```
 
-### Receita: Protegendo Recursos (Plugs de Autorização)
+### Recipe: CSRF Protection
+
+Protect your non-GET requests from Cross-Site Request Forgery.
 
 ```julia
-function plug_ensure_admin(conn::Conn)
-    user_id = get(conn.assigns, :current_user_id, nothing)
+using Suindara.CSRFModule
+
+pipeline(:browser) do
+    plug(CSRFModule.make_csrf_plug())
+end
+```
+*Note: This plug expects an `X-CSRF-Token` header or a `_csrf_token` parameter in form submissions.*
+
+### Recipe: Rate Limiting
+
+Protect your API from abuse using the Token Bucket algorithm.
+
+```julia
+using Suindara.RateLimiterModule
+
+# Allow 60 requests per minute per IP
+const rate_limit = RateLimiterModule.make_rate_limit_plug(
+    max_requests=60, 
+    window_seconds=60.0
+)
+
+pipeline(:api) do
+    plug(rate_limit)
+end
+```
+
+---
+
+## 4. API & Documentation
+
+### Recipe: Auto-Generating OpenAPI Specs
+
+Suindara can inspect your `Router` and generate a standard OpenAPI 3.0 (Swagger) JSON specification.
+
+```julia
+using Suindara.OpenAPIModule
+
+@router ApiRouter begin
+    # ... your routes ...
     
-    if user_id === nothing
-        return halt!(conn, 401, "Não autenticado")
+    # Expose the spec at /swagger
+    get("/swagger", conn -> begin
+        spec = OpenAPIModule.generate_spec(
+            ApiRouter,
+            title="My Awesome API",
+            version="1.0.0"
+        )
+        render_json(conn, spec)
+    end)
+end
+```
+
+---
+
+## 5. Observability & Telemetry
+
+### Recipe: Instrumenting Pipelines
+
+Track latency and custom events using `TelemetryModule`.
+
+```julia
+using Suindara.TelemetryModule
+
+# 1. Setup a store
+const telemetry = TelemetryStore()
+
+# 2. Attach a handler (e.g., logging)
+attach!(telemetry, :request_finished, (data) -> begin
+    println("Request took $(data[:latency])ms")
+end)
+
+# 3. Emit events in your Plugs or Contexts
+function timing_plug(conn)
+    latency = TelemetryModule.measure_latency() do
+        # ... logic ...
     end
-    
-    user = Repo.get_one("users", user_id)
-    if user.role != "admin"
-        return halt!(conn, 403, "Proibido: Requer privilégios de Admin")
-    end
-    
+    emit(telemetry, :request_finished, Dict(:latency => latency))
     return conn
 end
 ```
 
 ---
 
-## 3. Banco de Dados Avançado
+## 6. Database Patterns
 
-### Receita: Seeds e População de Dados
+### Recipe: Seeds & Data Population
 
-Crie um arquivo `priv/repo/seeds.jl` para popular o banco inicial.
+Create a `priv/repo/seeds.jl` file to populate the initial database.
 
 ```julia
 # priv/repo/seeds.jl
@@ -199,30 +312,22 @@ using Suindara.Repo
 Repo.connect("dev.db")
 
 function seed!()
-    println("🌱 Semeando banco de dados...")
+    println("🌱 Seeding database...")
     
-    # Limpar dados antigos
     Repo.execute("DELETE FROM users")
     
-    # Inserir Admin
     Repo.execute("INSERT INTO users (email, role) VALUES (?, ?)", 
         ["admin@example.com", "admin"])
         
-    # Inserir Dados Dummy
-    for i in 1:10
-        Repo.execute("INSERT INTO tasks (title, status) VALUES (?, ?)", 
-            ["Tarefa $i", "pending"])
-    end
-    
-    println("✅ Concluído.")
+    println("✅ Done.")
 end
 
 seed!()
 ```
 
-### Receita: Paginação Eficiente
+### Recipe: Efficient Pagination
 
-Nunca retorne `SELECT *` sem limite em tabelas grandes.
+Never return unlimited `SELECT *` on large tables.
 
 ```julia
 function paginate(query::String, page::Int=1, per_page::Int=20, params=[])
@@ -231,38 +336,34 @@ function paginate(query::String, page::Int=1, per_page::Int=20, params=[])
     
     return Repo.query(limit_query, params)
 end
-
-# Uso
-page = parse(Int, get(conn.params, "page", "1"))
-users = paginate("SELECT * FROM users", page)
 ```
 
-### Receita: Evitando N+1 (Preloading Manual)
+### Recipe: Avoiding N+1 Queries (Manual Preloading)
 
-Suindara não tem ORM complexo, então faça o carregamento de associações manualmente para performance.
+Suindara does not have a complex ORM, so perform association loading manually for performance.
 
-**Errado (N+1):**
+**Wrong (N+1):**
 ```julia
 tasks = Repo.query("SELECT * FROM tasks")
 for task in tasks
-    # Executa 1 query por tarefa! PERIGO!
+    # Executes 1 query per task! DANGER!
     user = Repo.get_one("users", task.user_id) 
 end
 ```
 
-**Correto (Preload):**
+**Correct (Preload):**
 ```julia
 tasks = Repo.query("SELECT * FROM tasks")
 user_ids = unique([t.user_id for t in tasks])
 
-# Busca todos os usuários relacionados de uma vez
+# Fetch all related users at once
 placeholders = join(["?" for _ in user_ids], ",")
 users_query = Repo.query("SELECT * FROM users WHERE id IN ($placeholders)", user_ids)
 
-# Cria um mapa para acesso rápido
+# Map for fast access
 users_map = Dict(u.id => u for u in users_query)
 
-# Associa em memória
+# Associate in memory
 tasks_with_users = []
 for task in tasks
     user = get(users_map, task.user_id, nothing)
@@ -272,384 +373,127 @@ end
 
 ---
 
-## 4. Middleware e Plugs
+## 7. Development Experience
 
-### Receita: CORS (Cross-Origin Resource Sharing)
+### Recipe: Hot Reloading with Revise
 
-Necessário se seu frontend (React/Vue) estiver em outro domínio/porta.
-
-```julia
-function plug_cors(conn::Conn)
-    # Permite qualquer origem (Cuidado em produção!)
-    push!(conn.resp_headers, "Access-Control-Allow-Origin" => "*")
-    push!(conn.resp_headers, "Access-Control-Allow-Methods" => "GET, POST, PUT, DELETE, OPTIONS")
-    push!(conn.resp_headers, "Access-Control-Allow-Headers" => "Content-Type, Authorization")
-    
-    # Responder imediatamente a requisições OPTIONS (Pre-flight)
-    if conn.request.method == "OPTIONS"
-        return halt!(conn, 204, "")
-    end
-    
-    return conn
-end
-```
-
-### Receita: Request ID e Rastreabilidade
-
-Adicione um ID único para rastrear logs em sistemas distribuídos.
+Accelerate your dev loop by automatically reloading changed code.
 
 ```julia
-using UUIDs
+using Suindara.HotReloadModule
 
-function plug_request_id(conn::Conn)
-    req_id = get(Dict(conn.request.headers), "x-request-id", string(uuid4()))
-    
-    # Devolve o ID no header da resposta para debug do cliente
-    push!(conn.resp_headers, "X-Request-ID" => req_id)
-    
-    # Coloca no assigns para uso no Logger
-    assign(conn, :request_id, req_id)
-    
-    return conn
+# In your main dev entrypoint:
+if Suindara.env() == "dev"
+    HotReloadModule.start_watching()
 end
 ```
+*Requires `Revise.jl` to be in your environment.*
 
 ---
 
-## 5. Testes e Qualidade
+## 8. Deployment & Production
 
-### Receita: Factories para Testes
+### Recipe: Configuration Management (ENV)
 
-Crie dados de teste de forma declarativa (inspirado no ExMachina).
-
-```julia
-module Factory
-    using Suindara.Repo
-    
-    function user_factory(attrs=Dict())
-        defaults = Dict(
-            "email" => "user_$(rand(1000:9999))@test.com",
-            "role" => "user"
-        )
-        merge!(defaults, attrs)
-        
-        Repo.execute("INSERT INTO users (email, role) VALUES (?, ?)", 
-            [defaults["email"], defaults["role"]])
-            
-        return Repo.get_one("users", defaults["email"], pk="email")
-    end
-end
-```
-
-### Receita: Testando Upload de Arquivos
-
-Simulando um multipart upload.
-
-```julia
-@testset "Upload de Avatar" begin
-    boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
-    body = """
-    --$boundary
-    Content-Disposition: form-data; name="avatar"; filename="me.png"
-    Content-Type: image/png
-
-    (dados binários simulados)
-    --$boundary--
-    """
-    
-    req = HTTP.Request("POST", "/upload", 
-        ["Content-Type" => "multipart/form-data; boundary=$boundary"], 
-        body)
-        
-    conn = Conn(req)
-    # ... dispatch ...
-    @test conn.status == 200
-end
-```
-
----
-
-## 6. Deploy e Produção
-
-### Receita: Gerenciamento de Configuração (ENV)
-
-Use `ENV` com valores padrão. Crie um arquivo `config/config.jl`.
+Use `ENV` with default values. Create a `config/config.jl` file.
 
 ```julia
 module Config
-
     function get_port()
         return parse(Int, get(ENV, "PORT", "8080"))
-    end
-
-    function get_db_path()
-        return get(ENV, "DATABASE_URL", "suindara_prod.db")
     end
     
     function get_secret_key()
         key = get(ENV, "SECRET_KEY_BASE", nothing)
         if key === nothing && get(ENV, "SUINDARA_ENV", "dev") == "prod"
-            error("SECRET_KEY_BASE é obrigatória em produção!")
+            error("SECRET_KEY_BASE is required in production!")
         end
         return key
     end
-
 end
 ```
 
-### Receita: Dockerfile Otimizado
+### Recipe: Optimized Dockerfile
 
-Um Dockerfile Multi-stage para manter a imagem pequena.
+A Multi-stage Dockerfile to keep the image small.
 
 ```dockerfile
-# Estágio 1: Builder
+# Stage 1: Builder
 FROM julia:1.10-alpine as builder
-
 WORKDIR /app
-
-# Instalar dependências do SO necessárias para compilar pacotes (se houver)
 RUN apk add --no-cache build-base
-
-# Copiar manifesto do projeto
 COPY Project.toml .
-
-# Instalar dependências e pré-compilar
 RUN julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
-
-# Copiar código fonte
 COPY . .
 
-# (Opcional) Compilar um sysimage customizado com PackageCompiler.jl para startup rápido
-# RUN julia --project=. scripts/create_sysimage.jl
-
-# Estágio 2: Runner
+# Stage 2: Runner
 FROM julia:1.10-alpine
-
 WORKDIR /app
-
-# Criar usuário não-root por segurança
 RUN addgroup -S suindara && adduser -S suindara -G suindara
-
 COPY --from=builder /app /app
-# Se criou sysimage, copie também
-
 USER suindara
-
 ENV JULIA_PROJECT=.
 ENV PORT=8080
-
 EXPOSE 8080
-
 CMD ["julia", "bin/suindara"]
-
 ```
-
-
 
 ---
 
+## 9. Migrating from Django/Rails
 
+If you are coming from Django or Rails, you might miss certain abstractions. Here is how to translate those patterns to Suindara's functional style.
 
-## 7. Migrando do Django (Receitas Avançadas)
+### Recipe: Composable Queries (Replacing Managers)
 
-
-
-Se você vem do Django ou Rails, pode sentir falta de certas abstrações. Aqui está como traduzir esses padrões para o estilo funcional do Suindara.
-
-
-
-### Receita: Queries Composáveis (Substituindo Managers)
-
-
-
-No Django, você faria `User.objects.active().premium()`. No Suindara, compomos funções que retornam tuplas de `(sql, params)`.
-
-
+In Django, you would do `User.objects.active().premium()`. In Suindara, we compose functions that return `(sql, params)` tuples.
 
 ```julia
-
 module UserQueries
-
     using Suindara.Repo
-
-
-
-    # Base Query
 
     base() = ("SELECT * FROM users WHERE 1=1", [])
 
-
-
-    # Modificadores (Filtros)
-
     function active(q)
-
         sql, params = q
-
         return ("$sql AND active = ?", [params..., 1])
-
     end
-
-
 
     function premium(q)
-
         sql, params = q
-
         return ("$sql AND plan = ?", [params..., "premium"])
-
     end
-
-
-
-    # Executor
 
     function all(q)
-
         sql, params = q
-
         return Repo.query(sql, params)
-
     end
-
 end
 
-
-
-# Uso com Pipe operator |>
-
+# Usage with Pipe operator |>
 # users = UserQueries.base() |> UserQueries.active |> UserQueries.premium |> UserQueries.all
-
 ```
 
+### Recipe: Service Pipelines (Replacing Service Classes)
 
-
-### Receita: Pipelines de Serviço (Substituindo Service Classes)
-
-
-
-Em vez de criar classes `UserService` com métodos estáticos, use o operador pipe para definir fluxos de dados claros.
-
-
+Instead of creating `UserService` classes with static methods, use the pipe operator to define clear data flows.
 
 ```julia
-
 module UserOnboarding
-
-    
-
     struct Context
-
         params::Dict
-
         user::Union{Nothing, Dict}
-
         email_sent::Bool
-
     end
-
-
 
     function run(params)
-
         ctx = Context(params, nothing, false)
-
         return ctx |> validate |> persist |> send_welcome_email
-
     end
-
-
-
-    function validate(ctx)
-
-        # Se já falhou, passa reto
-
-        if ctx === nothing return nothing end
-
-        # ... lógica de validação ...
-
-        return ctx
-
-    end
-
-
-
-    function persist(ctx)
-
-        if ctx === nothing return nothing end
-
-        # ... Repo.insert ...
-
-        # Retorna novo contexto com usuário salvo
-
-        return Context(ctx.params, saved_user, false)
-
-    end
-
-    
-
-    # ...
-
+    # ... implementation of steps ...
 end
-
 ```
-
-
-
-### Receita: Hooks Explícitos (Substituindo Signals)
-
-
-
-Signals do Django (`post_save`) são famosos por "mágica" difícil de rastrear. Prefira injeção de dependência ou wrappers explícitos.
-
-
-
-```julia
-
-# Em vez de um signal global, passe as ações colaterais como argumentos
-
-
-
-function create_order(params; on_success=[])
-
-    Repo.transaction() do
-
-        # 1. Salva Pedido
-
-        order = Repo.insert(...)
-
-        
-
-        # 2. Executa Hooks explicitamente
-
-        for hook in on_success
-
-            hook(order)
-
-        end
-
-    end
-
-end
-
-
-
-# Uso:
-
-# create_order(params, on_success=[
-
-#    order -> Email.send_receipt(order),
-
-#    order -> Inventory.decrement(order)
-
-# ])
-
-```
-
-
 
 ---
 
-
-
-**Suindara Framework** - Construído para ser simples, rápido e explícito.
+**Suindara Framework** - Built to be simple, fast, and explicit.

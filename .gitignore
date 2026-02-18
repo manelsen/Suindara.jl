@@ -4,3 +4,12 @@ KANBAN.md
 *.db
 *.db-shm
 *.db-wal
+
+benchmarks/cargo/
+benchmarks/go_dist/
+benchmarks/node_modules/
+benchmarks/rustup/
+benchmarks/rust_axum_app/target/
+venv/
+__pycache__/
+*.pyc

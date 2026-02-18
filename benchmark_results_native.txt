@@ -1,0 +1,17 @@
+Native Results
+--- Go (Fiber) ---
+Benchmarking http://127.0.0.1:8090/ for 10s with concurrency 100...
+--- Results for http://127.0.0.1:8090/ ---
+Total Requests: 151171
+RPS: 15091.69
+Avg Latency: 6.61 ms
+P95 Latency: 9.68 ms
+P99 Latency: 10.72 ms
+--- Rust (Axum) ---
+Benchmarking http://127.0.0.1:8091/ for 10s with concurrency 100...
+--- Results for http://127.0.0.1:8091/ ---
+Total Requests: 114675
+RPS: 11448.18
+Avg Latency: 8.72 ms
+P95 Latency: 11.16 ms
+P99 Latency: 12.48 ms
