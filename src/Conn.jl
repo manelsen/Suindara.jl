@@ -3,7 +3,7 @@ module ConnModule
 using HTTP
 using JSON3
 
-export Conn, assign, halt!, resp, json, text, html
+export Conn, assign, halt!, resp, json, text, html, status, put_header
 
 """
     mutable struct Conn
@@ -111,6 +111,74 @@ end
 
 function html(conn::Conn, body::String)
     return html(conn, 200, body)
+end
+
+
+"""
+    status(code::Int)
+
+Returns a function that sets the response status code.
+Enables pipeline syntax: `conn |> status(201) |> json(data)`
+"""
+function status(code::Int)
+    return function(conn::Conn)
+        conn.status = code
+        return conn
+    end
+end
+
+"""
+    put_header(key::String, value::String)
+
+Returns a function that adds a response header.
+Enables pipeline syntax: `conn |> put_header("X-Custom", "Value")`
+"""
+function put_header(key::String, value::String)
+    return function(conn::Conn)
+        push!(conn.resp_headers, key => value)
+        return conn
+    end
+end
+
+"""
+    json(data::Any)
+
+Returns a function that serializes `data` to JSON and sets the response.
+Uses the current `conn.status`.
+Enables pipeline syntax: `conn |> status(201) |> json(data)`
+"""
+function json(data::Any)
+    return function(conn::Conn)
+        # Delegate to the existing json(conn, status, data)
+        # Using conn.status ensures any prior `status(...)` call is respected.
+        return json(conn, conn.status, data)
+    end
+end
+
+"""
+    text(body::String)
+
+Returns a function that sets a text response.
+Uses the current `conn.status`.
+Enables pipeline syntax: `conn |> text("Hello")`
+"""
+function text(body::String)
+    return function(conn::Conn)
+        return text(conn, conn.status, body)
+    end
+end
+
+"""
+    html(body::String)
+
+Returns a function that sets an HTML response.
+Uses the current `conn.status`.
+Enables pipeline syntax: `conn |> html("<h1>Hello</h1>")`
+"""
+function html(body::String)
+    return function(conn::Conn)
+        return html(conn, conn.status, body)
+    end
 end
 
 end # module

@@ -17,7 +17,7 @@ using ..Repo
 using ..ChangesetModule
 using ..WebModule
 
-export ResourceController, schema, table_name, primary_key
+export ResourceController, schema, table_name, primary_key, @schema
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
@@ -178,5 +178,71 @@ module ResourceController
     end
 
 end # module ResourceController
+
+"""
+    @schema Name table_name block
+
+Macro to define a model struct and its database metadata in one go.
+
+# Example
+```julia
+@schema User "users" begin
+    field :name, String
+    field :email, String
+end
+```
+"""
+macro schema(name, table, block)
+    fields = []
+    schema_fields = Symbol[]
+    
+    # Always include id
+    push!(fields, :(id::Union{Int, Nothing}))
+    
+    function extract_sym(x)
+        if x isa Symbol; return x; end
+        if x isa QuoteNode; return x.value; end
+        if x isa Expr && x.head == :quote; return x.args[1]; end
+        return nothing
+    end
+
+    if block.head == :block
+        for line in block.args
+            if line isa LineNumberNode; continue; end
+            
+            if line isa Expr && line.head == :call
+                func = line.args[1]
+                if func == :field
+                    field_name = extract_sym(line.args[2])
+                    field_type = line.args[3]
+                    
+                    if field_name !== nothing
+                        push!(schema_fields, field_name)
+                        push!(fields, :($field_name::Union{$field_type, Nothing}))
+                    end
+                end
+            end
+        end
+    end
+
+    quote
+        mutable struct $(esc(name))
+            $(fields...)
+            $(esc(name))() = new($(repeat([nothing], length(fields))...))
+            $(esc(name))(params::Dict) = begin
+                obj = new($(repeat([nothing], length(fields))...))
+                obj.id = get(params, "id", get(params, :id, nothing))
+                for f in $schema_fields
+                    val = get(params, string(f), get(params, f, nothing))
+                    setproperty!(obj, f, val)
+                end
+                obj
+            end
+        end
+
+        ($(esc(:ResourceModule))).table_name(::Type{$(esc(name))}) = $table
+        ($(esc(:ResourceModule))).schema(::Type{$(esc(name))}) = $schema_fields
+    end
+end
 
 end # module ResourceModule

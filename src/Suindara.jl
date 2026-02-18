@@ -80,7 +80,7 @@ using .SocketModule
 using .ServerModule
 using .BenchmarkSuite
 
-export Conn, assign, halt!, resp, run_pipeline, json, text, html
+export Conn, assign, halt!, resp, run_pipeline, json, text, html, status, put_header
 export Route, match_and_dispatch, @router
 export Changeset, cast, validate_required, validate_format, validate_length, validate_inclusion
 export plug_json_parser, render_json

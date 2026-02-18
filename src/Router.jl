@@ -4,7 +4,7 @@ using ..ConnModule
 using ..PipelineModule
 using HTTP
 
-export Route, match_and_dispatch, @router, pipe_through, pipeline, scope, websocket, SuindaraRouter
+export Route, match_and_dispatch, @router, pipe_through, pipeline, scope, websocket, resources, SuindaraRouter
 
 # --- Structs ---
 
@@ -231,6 +231,40 @@ function process_expr!(state::RouterState, expr::Any)
             
             push!(state.socket_routes, (full_path, handler))
 
+        elseif func == :resources
+            # resources "/users", UserController
+            path_part = expr.args[2]
+            controller = expr.args[3] # Expecting a module/symbol
+
+            base_path = join(state.path_stack, "")
+            resource_path = base_path * path_part
+            resource_path = replace(resource_path, "//" => "/")
+            if length(resource_path) > 1 && endswith(resource_path, "/")
+                 resource_path = resource_path[1:end-1]
+            end
+
+            # Helper to add a route
+            function add_resource_route(method, suffix, action)
+                full_path = resource_path * suffix
+                current_pipes = copy(state.pipeline_stack)
+                # handler = :($controller.$action)
+                # We need to construct the function call expression properly
+                push!(state.routes, quote
+                    r, names = ($(@__MODULE__)).compile_route($full_path)
+                    Route($method, $full_path, r, names, $(current_pipes), $(esc(controller)).$(action))
+                end)
+            end
+
+            # Standard RESTful routes
+            add_resource_route("GET",     "",        :index)
+            add_resource_route("GET",     "/new",    :new)
+            add_resource_route("POST",    "",        :create)
+            add_resource_route("GET",     "/:id",    :show)
+            add_resource_route("GET",     "/:id/edit", :edit)
+            add_resource_route("PATCH",   "/:id",    :update)
+            add_resource_route("PUT",     "/:id",    :update)
+            add_resource_route("DELETE",  "/:id",    :delete)
+
         elseif func in [:get, :post, :put, :delete, :patch, :options, :head]
             method = string(func) |> uppercase
             path = expr.args[2]
@@ -288,5 +322,6 @@ function pipeline(args...) end
 function scope(args...) end
 function pipe_through(args...) end
 function websocket(args...) end
+function resources(args...) end
 
 end # module
