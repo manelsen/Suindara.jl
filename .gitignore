@@ -13,3 +13,4 @@ benchmarks/rust_axum_app/target/
 venv/
 __pycache__/
 *.pyc
+benchmarks/go_fiber_app/app
